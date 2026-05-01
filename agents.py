@@ -392,10 +392,10 @@ class IterativeDeepeningAgent(GameAgent):
         # TODO Part 2: implement get_move algorithm of IterativeDeepeningAgent
         best_move = None
         depth = 1
-        time_end = time.time() + time_limit
+        time_end = time.time() + time_limit - 0.05
 
         while time.time() < time_end:
-            move, _ = self.ab_helper(self.search_problem, game_state, 0, float('-inf'), float('inf'), depth, time_end - 0.05)
+            move, _ = self.ab_helper(self.search_problem, game_state, 0, float('-inf'), float('inf'), depth, time_end)
             if move is not None:
                 best_move = move
             else:
@@ -450,13 +450,15 @@ class IterativeDeepeningAgent(GameAgent):
             beta: The best value that the minimizing player can guarantee at this level or above.
             cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
         """
-        if time.time() >= time_limit:
-            return None, None
+
 
         v = float('-inf')
         best_action = None
 
         for action in asp.get_available_actions(state):
+            if time.time() >= time_limit:
+                break
+
             _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth, time_limit)
 
             if value is None:
@@ -487,14 +489,13 @@ class IterativeDeepeningAgent(GameAgent):
             beta: The best value that the minimizing player can guarantee at this level or above.
             cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
         """
-
-        if time.time() >= time_limit:
-            return None, None
         
         v = float('inf')
         best_action = None
 
         for action in asp.get_available_actions(state):
+            if time.time() >= time_limit:
+                break
             _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth, time_limit)
 
             if value is None:
@@ -571,7 +572,77 @@ class MCTSAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: Implement MCTS
-        pass
+        node = MCTSNode(game_state)
+        time_end = time.time() + time_limit - 0.1
+        pi = 0.5
+
+        while time.time() < time_end:
+            leaf = self.select(node, pi, time_end)
+            children = self.expand(leaf, time_end)
+            results = self.simulate(children, time_end)
+            self.backpropagate(results, children, time_end)
+
+        return node.children[np.argmax([child.visits for child in node.children])].action
+    
+
+    def select(self, node, tree_policy, time_end):
+        currNode = node
+        while len(currNode.children) > 0 and time.time() < time_end:
+            if currNode.state.is_terminal_state():
+                return currNode
+            
+            # epsilon greedy selection of child node
+            if random.random() < tree_policy:
+                currNode = random.choice(currNode.children)
+            else:
+                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
+        return currNode
+    
+
+    def expand(self, leaf, time_end):
+        if leaf.state.is_terminal_state():
+            return [leaf]
+        
+        children = []
+        state = leaf.state
+        actions = state.legal_actions()
+        for action in actions:
+            if time.time() >= time_end:
+                break
+            newState = self.search_problem.transition(state, action)
+            childNode = MCTSNode(newState, parent=leaf, action=action)
+            children.append(childNode)
+            leaf.children.append(childNode)
+        return children
+    
+
+    def simulate(self, children, time_end):
+        results = []
+        for child in children:
+            if time.time() >= time_end:
+                break
+            state = child.state
+            while not state.is_terminal_state() and time.time() < time_end:
+                action = random.choice(state.legal_actions())
+                state = self.search_problem.transition(state, action)
+            results.append(self.search_problem.get_result(state))
+        return results
+    
+    def backpropagate(self, results, children, time_end):
+        if time.time() >= time_end:
+            return
+        for child, result in zip(children, results):
+            if time.time() >= time_end:
+                break
+            currNode = child
+            while currNode is not None and time.time() < time_end:
+                currNode.visits += 1
+                if result == 0 and currNode.state.player_to_move() == 0:
+                    currNode.value += 1
+                elif result == 1 and currNode.state.player_to_move() == 1:
+                    currNode.value += 1
+                currNode = currNode.parent
+
 
     def __str__(self):
         return "MCTS"
