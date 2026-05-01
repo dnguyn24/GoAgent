@@ -131,10 +131,89 @@ class MinimaxAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 1: implement get_move method of MinimaxAgent
-        pass
+        best_action, _ = self.minimax_helper(self.search_problem, game_state, 0, self.depth)
+
+
+        return best_action
+
+    def minimax_helper(self, asp: HeuristicGoProblem, state: GoState, depth: int, cutoff_depth: float) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that performs the recursive search.
+
+        Args:
+            asp: The adversarial search problem.
+            depth: Current depth in the search tree.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+            stats: Dictionary to track search statistics.
+        
+        Returns:
+            The minimax value of the current state.
+        """
+        if asp.is_terminal_state(state):
+            return None, 1000 * asp.get_result(state)
+
+        if depth == cutoff_depth:
+            return None, asp.heuristic(state, state.player_to_move())
+        
+        # Determine if the current player is the maximizing player (player 0) or the minimizing player (player 1)
+        if state.player_to_move() == 0:
+            return self.max_minimax(asp, state, depth, cutoff_depth)
+        else:
+            return self.min_minimax(asp, state, depth, cutoff_depth)
+        
+    def max_minimax(self, asp: HeuristicGoProblem, state: GoState, depth: int, cutoff_depth: float = float('inf')) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the maximum value for the maximizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+
+        """
+        v = float('-inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.minimax_helper(asp, asp.transition(state, action), depth + 1, cutoff_depth)
+
+            if value > v:
+                v = value
+                best_action = action
+
+        return best_action, v
+
+
+    def min_minimax(self, asp: HeuristicGoProblem, state: GoState, depth: int, cutoff_depth: float = float('inf')) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the minimum value for the minimizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+        """
+        v = float('inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.minimax_helper(asp, asp.transition(state, action), depth + 1, cutoff_depth)
+
+            if value < v:
+                v = value
+                best_action = action
+
+        return best_action, v
+            
 
     def __str__(self):
         return f"MinimaxAgent w/ depth {self.depth} + " + str(self.search_problem)
+    
+
 
 
 class AlphaBetaAgent(GameAgent):
@@ -157,7 +236,103 @@ class AlphaBetaAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 1: implement get_move algorithm of AlphaBeta Agent
-        pass
+        alpha = float('-inf')
+        beta = float('inf')
+
+        best_action, _ = self.ab_helper(self.search_problem, game_state, 0, alpha, beta, self.depth)
+
+        return best_action
+    
+
+    def ab_helper(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that performs the recursive search.
+
+        Args:
+            asp: The adversarial search problem.
+            depth: Current depth in the search tree.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+        
+        Returns:
+            The minimax value of the current state.
+        """
+        if asp.is_terminal_state(state):
+            return None, 1000*asp.get_result(state)
+        
+        if depth == cutoff_depth:
+            return None, asp.heuristic(state, state.player_to_move())
+
+
+        if state.player_to_move() == 0:
+            return self.max_ab(asp, state, depth, alpha, beta, cutoff_depth)
+        else:
+            return self.min_ab(asp, state, depth, alpha, beta, cutoff_depth)
+
+        
+
+    def max_ab(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float = float('inf')) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the maximum value for the maximizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+        """
+        v = float('-inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth)
+
+            if value > v:
+                v = value
+                best_action = action
+
+            if value >= beta:
+                return action, value
+            else:
+                alpha = max(alpha, v)
+
+        return best_action, v
+
+
+    def min_ab(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float = float('inf')) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the minimum value for the minimizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+        """
+        v = float('inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth)
+
+            if value < v:
+                best_action = action
+                v = value
+
+            if value <= alpha:
+                return action, value
+            else:
+                beta = min(beta, v)
+
+        return best_action, v
 
     def __str__(self):
         return f"AlphaBeta w/ depth {self.depth} + " + str(self.search_problem)
@@ -215,10 +390,134 @@ class IterativeDeepeningAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: implement get_move algorithm of IterativeDeepeningAgent
-        pass
+        best_move = None
+        depth = 1
+        time_end = time.time() + time_limit
+
+        while time.time() < time_end:
+            move, _ = self.ab_helper(self.search_problem, game_state, 0, float('-inf'), float('inf'), depth, time_end - 0.05)
+            if move is not None:
+                best_move = move
+            else:
+                break
+            depth += 1
+
+        return best_move
+    
+
+    def ab_helper(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float, time_limit: float) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that performs the recursive search.
+
+        Args:
+            asp: The adversarial search problem.
+            depth: Current depth in the search tree.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+        
+        Returns:
+            The minimax value of the current state.
+        """
+        if time.time() >= time_limit:
+            return None, None   
+            
+        if asp.is_terminal_state(state):
+            return None, 1000*asp.get_result(state)
+        
+        if depth == cutoff_depth:
+            return None, asp.heuristic(state, state.player_to_move())
+
+
+        if state.player_to_move() == 0:
+            return self.max_ab(asp, state, depth, alpha, beta, cutoff_depth, time_limit)
+        else:
+            return self.min_ab(asp, state, depth, alpha, beta, cutoff_depth, time_limit)
+
+        
+
+    def max_ab(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float, time_limit: float) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the maximum value for the maximizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+        """
+        if time.time() >= time_limit:
+            return None, None
+
+        v = float('-inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth, time_limit)
+
+            if value is None:
+                return None, None
+            
+            if value > v:
+                v = value
+                best_action = action
+
+            if value >= beta:
+                return action, value
+            else:
+                alpha = max(alpha, v)
+
+        return best_action, v
+
+
+    def min_ab(self, asp: HeuristicGoProblem, state: GoState, depth: int, alpha: float, beta: float, cutoff_depth: float, time_limit: float) -> Tuple[Action, float]:
+        """
+        Helper function for minimax that computes the minimum value for the minimizing player.
+
+        args:
+            asp: The adversarial search problem.
+            state: The current game state.
+            depth: Current depth in the search tree.
+            stats: Dictionary to track search statistics.
+            alpha: The best value that the maximizing player can guarantee at this level or above.
+            beta: The best value that the minimizing player can guarantee at this level or above.
+            cutoff_depth: Maximum search depth (0 = start state, 1 = one move ahead).
+        """
+
+        if time.time() >= time_limit:
+            return None, None
+        
+        v = float('inf')
+        best_action = None
+
+        for action in asp.get_available_actions(state):
+            _, value = self.ab_helper(asp, asp.transition(state, action), depth + 1, alpha, beta, cutoff_depth, time_limit)
+
+            if value is None:
+                return None, None
+            
+            if value < v:
+                best_action = action
+                v = value
+
+            if value <= alpha:
+                return action, value
+            else:
+                beta = min(beta, v)
+
+        return best_action, v
+
+
 
     def __str__(self):
-        return f"IterativeDeepneing + " + str(self.search_problem)
+        return f"IterativeDeepening + " + str(self.search_problem)
+    
+
+
     
 
 class MCTSNode:

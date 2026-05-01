@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import random
 from typing import Sequence, Set, Type, Tuple, List, Optional, Union, Any
 import numpy as np
 from adversarial_search_problem import AdversarialSearchProblem, GameState
@@ -242,7 +243,7 @@ class GoProblem(AdversarialSearchProblem[GoState, Action]):
             List of legal action indices
         """
         actions = list(state.legal_actions())
-        
+        random.shuffle(actions)
         return actions
 
     def transition(self, state: GoState, action: Action) -> GoState:
