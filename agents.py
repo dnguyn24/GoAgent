@@ -339,23 +339,54 @@ class AlphaBetaAgent(GameAgent):
     
 
 
+def get_features(game_state: GoState):
+    """
+    Map a game state to a list of features.
+
+    Some useful functions from game_state include:
+        game_state.size: size of the board
+        get_pieces_coordinates(player_index): get coordinates of all pieces of a player (0 or 1)
+        get_pieces_array(player_index): get a 2D array of pieces of a player (0 or 1)
+        
+        get_board(): get a 2D array of the board with 4 channels (player 0, player 1, empty, and player to move). 4 channels means the array will be of size 4 x n x n
+    
+        Descriptions of these methods can be found in the GoState
+
+    Input:
+        game_state: GoState to encode into a fixed size list of features
+    Output:
+        features: list of features
+    """
+
+    board_size = game_state.size
+    # TODO: Encode game_state into a list of features
+    features = []
+    board = game_state.get_board()
+    black_pieces = board[0].reshape(board_size * board_size)
+    white_pieces = board[1].reshape(board_size * board_size)
+    player = game_state.player_to_move()
+
+    # stone difference
+    stone_diff = np.sum(black_pieces) - np.sum(white_pieces)
+
+    legal = np.zeros(26)
+    for action in game_state.legal_actions():
+        legal[action] = 1
+
+    features = np.concatenate((black_pieces, white_pieces, [player], [stone_diff], legal))
 
 
+    return features
 
 
 def create_value_agent_from_model():
     """
-    Create agent object from saved model. 
-    This (or other methods like this) will be how your agents will be created in gradescope and in the final tournament.
-
-    In the game_runner file, there is a factory function that will call this function to create an agent.
-    You can run games with your agent against other agents by running game_runner.py with the appropriate command line arguments.
+    Create agent object from saved model. This (or other methods like this) will be how your agents will be created in gradescope and in the final tournament.
     """
-    # TODO: Update model path to your saved model
-    model_path = "value_model.pt"
 
+    model_path = "value_model.pt"
     # TODO: Update number of features for your own encoding size
-    feature_size = 0
+    feature_size = 78
     model = load_model(model_path, ValueNetwork(feature_size))
     heuristic_search_problem = GoProblemLearnedHeuristic(model)
 
@@ -396,7 +427,7 @@ class IterativeDeepeningAgent(GameAgent):
         # TODO Part 2: implement get_move algorithm of IterativeDeepeningAgent
         best_move = random.choice(self.search_problem.get_available_actions(game_state))
         depth = 1
-        time_end = time.time() + min(time_limit, self.cutoff_time) - 0.07
+        time_end = time.time() + min(time_limit, self.cutoff_time) - 0.05
 
         while time.time() < time_end:
             move, _ = self.ab_helper(self.search_problem, game_state, 0, float('-inf'), float('inf'), depth, time_end)
@@ -584,7 +615,7 @@ class MCTSAgent(GameAgent):
         # TODO Part 2: Implement MCTS
         best_action = random.choice(self.search_problem.get_available_actions(game_state))
         node = MCTSNode(game_state)
-        time_end = time.time() + time_limit - 1
+        time_end = time.time() + time_limit - 0.05
 
         while time.time() < time_end:
             leaf = self.select(node, time_end)
@@ -598,7 +629,7 @@ class MCTSAgent(GameAgent):
         return best_action
     
 
-    
+
 
     def select(self, node, time_end):
         if time.time() >= time_end:
@@ -613,7 +644,7 @@ class MCTSAgent(GameAgent):
             if unvisited_children:
                 return random.choice(unvisited_children)
             else:
-                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
+                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.parent.visits) / n.visits))
 
             
         return currNode
