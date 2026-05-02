@@ -1,5 +1,6 @@
 from typing import Optional, Any, Union
 import numpy as np
+import torch
 from go_search_problem import GoState, HeuristicGoProblem
 BLACK = 0
 WHITE = 1
@@ -37,3 +38,5 @@ class GoProblemLearnedHeuristic(HeuristicGoProblem):
 
     def __str__(self) -> str:
         return "Learned Heuristic"
+    
+

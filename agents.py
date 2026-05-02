@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from go_search_problem import GoProblem, GoState, Action, HeuristicGoProblem
-from heuristic_go_problems import GoProblemSimpleHeuristic
+from heuristic_go_problems import GoProblemSimpleHeuristic, GoProblemLearnedHeuristic
 from models import ValueNetwork, load_model
 
 MAXIMIZER = 0
@@ -336,6 +336,10 @@ class AlphaBetaAgent(GameAgent):
 
     def __str__(self):
         return f"AlphaBeta w/ depth {self.depth} + " + str(self.search_problem)
+    
+
+
+
 
 
 
@@ -390,9 +394,9 @@ class IterativeDeepeningAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: implement get_move algorithm of IterativeDeepeningAgent
-        best_move = None
+        best_move = random.choice(self.search_problem.get_available_actions(game_state))
         depth = 1
-        time_end = time.time() + time_limit - 0.05
+        time_end = time.time() + min(time_limit, self.cutoff_time) - 0.07
 
         while time.time() < time_end:
             move, _ = self.ab_helper(self.search_problem, game_state, 0, float('-inf'), float('inf'), depth, time_end)
@@ -455,6 +459,9 @@ class IterativeDeepeningAgent(GameAgent):
         v = float('-inf')
         best_action = None
 
+        if time.time() >= time_limit:
+            return best_action, v
+
         for action in asp.get_available_actions(state):
             if time.time() >= time_limit:
                 break
@@ -492,6 +499,9 @@ class IterativeDeepeningAgent(GameAgent):
         
         v = float('inf')
         best_action = None
+
+        if time.time() >= time_limit:
+            return best_action, v
 
         for action in asp.get_available_actions(state):
             if time.time() >= time_limit:
@@ -572,34 +582,49 @@ class MCTSAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: Implement MCTS
+        best_action = random.choice(self.search_problem.get_available_actions(game_state))
         node = MCTSNode(game_state)
-        time_end = time.time() + time_limit - 0.1
-        pi = 0.5
+        time_end = time.time() + time_limit - 1
 
         while time.time() < time_end:
-            leaf = self.select(node, pi, time_end)
+            leaf = self.select(node, time_end)
             children = self.expand(leaf, time_end)
             results = self.simulate(children, time_end)
             self.backpropagate(results, children, time_end)
 
-        return node.children[np.argmax([child.visits for child in node.children])].action
+        if len(node.children) > 0:
+            best_action = node.children[np.argmax([child.visits for child in node.children])].action
+
+        return best_action
     
 
-    def select(self, node, tree_policy, time_end):
+    
+
+    def select(self, node, time_end):
+        if time.time() >= time_end:
+            return node
+        
         currNode = node
         while len(currNode.children) > 0 and time.time() < time_end:
             if currNode.state.is_terminal_state():
                 return currNode
             
-            # epsilon greedy selection of child node
-            if random.random() < tree_policy:
-                currNode = random.choice(currNode.children)
+            unvisited_children = [child for child in currNode.children if child.visits == 0]
+            if unvisited_children:
+                return random.choice(unvisited_children)
             else:
                 currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
+
+            
         return currNode
+
+
     
 
     def expand(self, leaf, time_end):
+        if time.time() >= time_end:
+            return random.choice(leaf.children) if len(leaf.children) > 0 else leaf
+        
         if leaf.state.is_terminal_state():
             return [leaf]
         
@@ -617,6 +642,9 @@ class MCTSAgent(GameAgent):
     
 
     def simulate(self, children, time_end):
+        if time.time() >= time_end:
+            return []
+        
         results = []
         for child in children:
             if time.time() >= time_end:
