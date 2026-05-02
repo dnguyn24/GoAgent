@@ -573,7 +573,7 @@ class MCTSAgent(GameAgent):
         """
         # TODO Part 2: Implement MCTS
         node = MCTSNode(game_state)
-        time_end = time.time() + time_limit - 1
+        time_end = time.time() + time_limit - 0.1
         pi = 0.5
 
         while time.time() < time_end:
