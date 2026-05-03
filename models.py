@@ -37,12 +37,12 @@ class ValueNetwork(nn.Module):
       output_size = 1
 
       # TODO: Add more layers, non-linear activation functions, etc.
-      self.layer1 = nn.Linear(input_size, 15)
-      self.layer2 = nn.Linear(15, 10)
-      self.layer3 = nn.Linear(10, 5)
-      self.layer4 = nn.Linear(5, output_size) # output layer
+      self.layer1 = nn.Linear(input_size, 60)
+      self.layer2 = nn.Linear(60, 40)
+      self.layer3 = nn.Linear(40, 20)
+      self.layer4 = nn.Linear(20, output_size) # output layer
       self.sigmoid = nn.Sigmoid()
-      self.tanh = nn.Tanh()
+      self.relu = nn.ReLU()
 
     def forward(self, x):
       """
@@ -55,11 +55,11 @@ class ValueNetwork(nn.Module):
       """
       # TODO: Update as more layers are added
       z1 = self.layer1(x)
-      a1 = self.tanh(z1)
+      a1 = self.relu(z1)
       z2 = self.layer2(a1)
-      a2 = self.tanh(z2)
+      a2 = self.relu(z2)
       z3 = self.layer3(a2)
-      a3 = self.tanh(z3)
+      a3 = self.relu(z3)
       z4 = self.layer4(a3)
       return self.sigmoid(z4)
 

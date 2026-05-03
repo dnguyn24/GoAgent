@@ -15,7 +15,8 @@ Cutoff depth
 Minimax: 3
 Alphabeta: 6
 
-chnage this to tournament results
+Overall, this demonstrates that alphabeta pruning allows the agent to search deeper in the game tree compared to minimax, which can lead to better decision making and improved performance.
+
 
 Tell us about your implementation!
 

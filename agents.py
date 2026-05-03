@@ -644,7 +644,8 @@ class MCTSAgent(GameAgent):
             if unvisited_children:
                 return random.choice(unvisited_children)
             else:
-                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.parent.visits) / n.visits))
+                if currNode.parent:
+                    currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.parent.visits) / n.visits))
 
             
         return currNode
@@ -715,7 +716,7 @@ class MCTSAgent(GameAgent):
 
 def get_final_agent_5x5():
     """Called to construct agent for final submission for 5x5 board"""
-    return MCTSAgent()
+    return create_value_agent_from_model()
 
 def get_final_agent_9x9():
     """Called to construct agent for final submission for 9x9 board"""
