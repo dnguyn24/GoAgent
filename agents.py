@@ -643,9 +643,11 @@ class MCTSAgent(GameAgent):
             unvisited_children = [child for child in currNode.children if child.visits == 0]
             if unvisited_children:
                 return random.choice(unvisited_children)
+                
+            if currNode.state.player_to_move() == MAXIMIZER:
+                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
             else:
-                if currNode.parent:
-                    currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.parent.visits) / n.visits))
+                currNode = min(currNode.children, key=lambda n: n.value / n.visits - self.c * np.sqrt(np.log(currNode.visits) / n.visits))
 
             
         return currNode
@@ -653,40 +655,104 @@ class MCTSAgent(GameAgent):
 
     
 
+    # def expand(self, leaf, time_end):
+    #     if time.time() >= time_end:
+    #         return random.choice(leaf.children) if len(leaf.children) > 0 else leaf
+        
+    #     if leaf.state.is_terminal_state():
+    #         return [leaf]
+        
+    #     children = []
+    #     state = leaf.state
+    #     actions = state.legal_actions()
+    #     for action in actions:
+    #         if time.time() >= time_end:
+    #             break
+    #         newState = self.search_problem.transition(state, action)
+    #         childNode = MCTSNode(newState, parent=leaf, action=action)
+    #         children.append(childNode)
+    #         leaf.children.append(childNode)
+    #     return children
+    
+
+    # def simulate(self, children, time_end):
+    #     if time.time() >= time_end:
+    #         return []
+        
+    #     results = []
+    #     for child in children:
+    #         if time.time() >= time_end:
+    #             break
+    #         state = child.state
+    #         while not state.is_terminal_state() and time.time() < time_end:
+    #             action = random.choice(state.legal_actions())
+    #             state = self.search_problem.transition(state, action)
+    #         results.append(self.search_problem.get_result(state))
+    #     return results
+
+
+
     def expand(self, leaf, time_end):
+        """Add one new child to the tree (or return existing unvisited child)."""
         if time.time() >= time_end:
-            return random.choice(leaf.children) if len(leaf.children) > 0 else leaf
+            return [leaf]
         
         if leaf.state.is_terminal_state():
             return [leaf]
         
-        children = []
+        # Check if there are unvisited children
+        unvisited = [c for c in leaf.children if c.visits == 0]
+        if unvisited:
+            return [random.choice(unvisited)]
+        
+        # If all children visited, add one new child
         state = leaf.state
         actions = state.legal_actions()
-        for action in actions:
-            if time.time() >= time_end:
-                break
+        
+        # Find which actions don't have children yet
+        existing_actions = {child.action for child in leaf.children}
+        new_actions = [a for a in actions if a not in existing_actions]
+        
+        if new_actions:
+            # Create ONE new child
+            action = new_actions[0]
             newState = self.search_problem.transition(state, action)
             childNode = MCTSNode(newState, parent=leaf, action=action)
-            children.append(childNode)
             leaf.children.append(childNode)
-        return children
-    
+            return [childNode]
+        
+        # All children exist and visited - return random visited child for simulation
+        return [leaf.children[0]] if leaf.children else [leaf]
+
 
     def simulate(self, children, time_end):
+        """Run simulations with strict depth limit."""
         if time.time() >= time_end:
             return []
         
         results = []
+        max_depth = 20  # Strict limit: 20 moves max per simulation
+        
         for child in children:
             if time.time() >= time_end:
                 break
             state = child.state
-            while not state.is_terminal_state() and time.time() < time_end:
+            depth = 0
+            
+            # Play random game for up to max_depth moves
+            while not state.is_terminal_state() and depth < max_depth and time.time() < time_end:
                 action = random.choice(state.legal_actions())
                 state = self.search_problem.transition(state, action)
+                depth += 1
+            
             results.append(self.search_problem.get_result(state))
+        
         return results
+
+
+
+
+
     
     def backpropagate(self, results, children, time_end):
         if time.time() >= time_end:
@@ -697,9 +763,7 @@ class MCTSAgent(GameAgent):
             currNode = child
             while currNode is not None and time.time() < time_end:
                 currNode.visits += 1
-                if result == 0 and currNode.state.player_to_move() == 0:
-                    currNode.value += 1
-                elif result == 1 and currNode.state.player_to_move() == 1:
+                if result == 0:
                     currNode.value += 1
                 currNode = currNode.parent
 
