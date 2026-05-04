@@ -562,7 +562,6 @@ class IterativeDeepeningAgent(GameAgent):
 
     
 
-
 class MCTSNode:
     def __init__(self, state, parent=None, children=None, action=None):
         # GameState for Node
@@ -614,65 +613,93 @@ class MCTSAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: Implement MCTS
+        best_action = random.choice(self.search_problem.get_available_actions(game_state))
         node = MCTSNode(game_state)
-        time_end = time.time() + time_limit - 0.05
+        time_end = time.time() + time_limit - 1
 
         while time.time() < time_end:
             leaf = self.select(node, time_end)
-            child = self.expand(leaf, time_end)
-            results = self.simulate(child, time_end)
-            self.backpropagate(results, child, time_end)
+            children = self.expand(leaf, time_end)
+            results = self.simulate(children, time_end)
+            self.backpropagate(results, children, time_end)
 
-        return node.children[np.argmax([child.visits for child in node.children])].action
+        if len(node.children) > 0:
+            best_action = node.children[np.argmax([child.visits for child in node.children])].action
+
+        return best_action
+    
+
     
 
     def select(self, node, time_end):
+        if time.time() >= time_end:
+            return node
+        
         currNode = node
-        while time.time() < time_end:
+        while len(currNode.children) > 0 and time.time() < time_end:
             if currNode.state.is_terminal_state():
                 return currNode
             
-            if len(currNode.children) == 0 or any(child.visits == 0 for child in currNode.children):
-                return currNode
+            unvisited_children = [child for child in currNode.children if child.visits == 0]
+            if unvisited_children:
+                return random.choice(unvisited_children)
+            else:
+                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
+
             
-            currNode = max(currNode.children, key=lambda n, parent = currNode:  n.value / n.visits + self.c * np.sqrt(np.log(parent.visits) / n.visits))      
         return currNode
+
+
+
+    def expand(self, leaf, time_end):
+        if time.time() >= time_end:
+            return random.choice(leaf.children) if len(leaf.children) > 0 else leaf
+        
+        if leaf.state.is_terminal_state():
+            return [leaf]
+        
+        children = []
+        state = leaf.state
+        actions = state.legal_actions()
+        for action in actions:
+            if time.time() >= time_end:
+                break
+            newState = self.search_problem.transition(state, action)
+            childNode = MCTSNode(newState, parent=leaf, action=action)
+            children.append(childNode)
+            leaf.children.append(childNode)
+        return children
     
 
-    def expand(self, leaf, time_end):       
-        if leaf.state.is_terminal_state() or time.time() >= time_end:
-            return leaf
+    def simulate(self, children, time_end):
+        if time.time() >= time_end:
+            return []
         
-        actions = {child.action for child in leaf.children}
-        unvisited = [action for action in leaf.state.legal_actions() if action not in actions]
-
-        if not unvisited:
-            return leaf
-        else:
-        
-            action = random.choice(unvisited)
-            state = self.search_problem.transition(leaf.state, action)
-            child = MCTSNode(state, parent=leaf, action=action)
-            leaf.children.append(child)
-            return child
-
-    def simulate(self, child, time_end):
-        state = child.state
-        while not state.is_terminal_state() and time.time() < time_end:
-            action = random.choice(state.legal_actions())
-            state = self.search_problem.transition(state, action)
-        return self.search_problem.get_result(state)
-
+        results = []
+        for child in children:
+            if time.time() >= time_end:
+                break
+            state = child.state
+            while not state.is_terminal_state() and time.time() < time_end:
+                action = random.choice(state.legal_actions())
+                state = self.search_problem.transition(state, action)
+            results.append(self.search_problem.get_result(state))
+        return results
     
-    def backpropagate(self, result, child, time_end):
-        currNode = child
-        while currNode is not None and time.time() < time_end:
-            currNode.visits += 1
-            if result == 0 and currNode.state.player_to_move() == 1:
-                currNode.value += 1
-            elif result == 1 and currNode.state.player_to_move() == 0:
-                currNode.value += 1
-            currNode = currNode.parent
+    def backpropagate(self, results, children, time_end):
+        if time.time() >= time_end:
+            return
+        for child, result in zip(children, results):
+            if time.time() >= time_end:
+                break
+            currNode = child
+            while currNode is not None and time.time() < time_end:
+                currNode.visits += 1
+                if result == -1 and currNode.state.player_to_move() == 0:
+                    currNode.value += 1
+                elif result == 1 and currNode.state.player_to_move() == 1:
+                    currNode.value += 1
+                currNode = currNode.parent
 
 
     def __str__(self):
