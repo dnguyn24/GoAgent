@@ -18,6 +18,15 @@ Alphabeta: 6
 Overall, this demonstrates that alphabeta pruning allows the agent to search deeper in the game tree compared to minimax, which can lead to better decision making and improved performance.
 
 
+
+
+
+# Part 3
+Sources: 
+https://huggingface.co/learn/deep-rl-course/unit3/deep-q-algorithm
+https://www.geeksforgeeks.org/deep-learning/implementing-deep-q-learning-using-tensorflow/
+
+
 Tell us about your implementation!
 
 Answer the conceptual questions!

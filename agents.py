@@ -562,6 +562,7 @@ class IterativeDeepeningAgent(GameAgent):
 
     
 
+
 class MCTSNode:
     def __init__(self, state, parent=None, children=None, action=None):
         # GameState for Node
@@ -613,159 +614,65 @@ class MCTSAgent(GameAgent):
             best_action (Action): best action for current game state
         """
         # TODO Part 2: Implement MCTS
-        best_action = random.choice(self.search_problem.get_available_actions(game_state))
         node = MCTSNode(game_state)
         time_end = time.time() + time_limit - 0.05
 
         while time.time() < time_end:
             leaf = self.select(node, time_end)
-            children = self.expand(leaf, time_end)
-            results = self.simulate(children, time_end)
-            self.backpropagate(results, children, time_end)
+            child = self.expand(leaf, time_end)
+            results = self.simulate(child, time_end)
+            self.backpropagate(results, child, time_end)
 
-        if len(node.children) > 0:
-            best_action = node.children[np.argmax([child.visits for child in node.children])].action
-
-        return best_action
+        return node.children[np.argmax([child.visits for child in node.children])].action
     
 
-
-
     def select(self, node, time_end):
-        if time.time() >= time_end:
-            return node
-        
         currNode = node
-        while len(currNode.children) > 0 and time.time() < time_end:
+        while time.time() < time_end:
             if currNode.state.is_terminal_state():
                 return currNode
             
-            unvisited_children = [child for child in currNode.children if child.visits == 0]
-            if unvisited_children:
-                return random.choice(unvisited_children)
-                
-            if currNode.state.player_to_move() == MAXIMIZER:
-                currNode = max(currNode.children, key=lambda n: n.value / n.visits + self.c * np.sqrt(np.log(currNode.visits) / n.visits))
-            else:
-                currNode = min(currNode.children, key=lambda n: n.value / n.visits - self.c * np.sqrt(np.log(currNode.visits) / n.visits))
-
+            if len(currNode.children) == 0 or any(child.visits == 0 for child in currNode.children):
+                return currNode
             
+            currNode = max(currNode.children, key=lambda n, parent = currNode:  n.value / n.visits + self.c * np.sqrt(np.log(parent.visits) / n.visits))      
         return currNode
-
-
     
 
-    # def expand(self, leaf, time_end):
-    #     if time.time() >= time_end:
-    #         return random.choice(leaf.children) if len(leaf.children) > 0 else leaf
+    def expand(self, leaf, time_end):       
+        if leaf.state.is_terminal_state() or time.time() >= time_end:
+            return leaf
         
-    #     if leaf.state.is_terminal_state():
-    #         return [leaf]
-        
-    #     children = []
-    #     state = leaf.state
-    #     actions = state.legal_actions()
-    #     for action in actions:
-    #         if time.time() >= time_end:
-    #             break
-    #         newState = self.search_problem.transition(state, action)
-    #         childNode = MCTSNode(newState, parent=leaf, action=action)
-    #         children.append(childNode)
-    #         leaf.children.append(childNode)
-    #     return children
-    
+        actions = {child.action for child in leaf.children}
+        unvisited = [action for action in leaf.state.legal_actions() if action not in actions]
 
-    # def simulate(self, children, time_end):
-    #     if time.time() >= time_end:
-    #         return []
+        if not unvisited:
+            return leaf
+        else:
         
-    #     results = []
-    #     for child in children:
-    #         if time.time() >= time_end:
-    #             break
-    #         state = child.state
-    #         while not state.is_terminal_state() and time.time() < time_end:
-    #             action = random.choice(state.legal_actions())
-    #             state = self.search_problem.transition(state, action)
-    #         results.append(self.search_problem.get_result(state))
-    #     return results
+            action = random.choice(unvisited)
+            state = self.search_problem.transition(leaf.state, action)
+            child = MCTSNode(state, parent=leaf, action=action)
+            leaf.children.append(child)
+            return child
 
-
-
-    def expand(self, leaf, time_end):
-        """Add one new child to the tree (or return existing unvisited child)."""
-        if time.time() >= time_end:
-            return [leaf]
-        
-        if leaf.state.is_terminal_state():
-            return [leaf]
-        
-        # Check if there are unvisited children
-        unvisited = [c for c in leaf.children if c.visits == 0]
-        if unvisited:
-            return [random.choice(unvisited)]
-        
-        # If all children visited, add one new child
-        state = leaf.state
-        actions = state.legal_actions()
-        
-        # Find which actions don't have children yet
-        existing_actions = {child.action for child in leaf.children}
-        new_actions = [a for a in actions if a not in existing_actions]
-        
-        if new_actions:
-            # Create ONE new child
-            action = new_actions[0]
-            newState = self.search_problem.transition(state, action)
-            childNode = MCTSNode(newState, parent=leaf, action=action)
-            leaf.children.append(childNode)
-            return [childNode]
-        
-        # All children exist and visited - return random visited child for simulation
-        return [leaf.children[0]] if leaf.children else [leaf]
-
-
-    def simulate(self, children, time_end):
-        """Run simulations with strict depth limit."""
-        if time.time() >= time_end:
-            return []
-        
-        results = []
-        max_depth = 20  # Strict limit: 20 moves max per simulation
-        
-        for child in children:
-            if time.time() >= time_end:
-                break
-            state = child.state
-            depth = 0
-            
-            # Play random game for up to max_depth moves
-            while not state.is_terminal_state() and depth < max_depth and time.time() < time_end:
-                action = random.choice(state.legal_actions())
-                state = self.search_problem.transition(state, action)
-                depth += 1
-            
-            results.append(self.search_problem.get_result(state))
-        
-        return results
-
-
-
-
+    def simulate(self, child, time_end):
+        state = child.state
+        while not state.is_terminal_state() and time.time() < time_end:
+            action = random.choice(state.legal_actions())
+            state = self.search_problem.transition(state, action)
+        return self.search_problem.get_result(state)
 
     
-    def backpropagate(self, results, children, time_end):
-        if time.time() >= time_end:
-            return
-        for child, result in zip(children, results):
-            if time.time() >= time_end:
-                break
-            currNode = child
-            while currNode is not None and time.time() < time_end:
-                currNode.visits += 1
-                if result == 0:
-                    currNode.value += 1
-                currNode = currNode.parent
+    def backpropagate(self, result, child, time_end):
+        currNode = child
+        while currNode is not None and time.time() < time_end:
+            currNode.visits += 1
+            if result == 0 and currNode.state.player_to_move() == 1:
+                currNode.value += 1
+            elif result == 1 and currNode.state.player_to_move() == 0:
+                currNode.value += 1
+            currNode = currNode.parent
 
 
     def __str__(self):
@@ -780,7 +687,7 @@ class MCTSAgent(GameAgent):
 
 def get_final_agent_5x5():
     """Called to construct agent for final submission for 5x5 board"""
-    return create_value_agent_from_model()
+    return MCTSAgent()
 
 def get_final_agent_9x9():
     """Called to construct agent for final submission for 9x9 board"""
