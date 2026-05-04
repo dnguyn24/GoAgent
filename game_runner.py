@@ -365,6 +365,7 @@ def create_agent(agent_type: str, **kwargs) -> Any:
         'learned': lambda: create_value_agent_from_model(),
         'mcts': lambda: MCTSAgent(),
         # Add more agents as needed for part 3
+        'hybrid': lambda: HybridAgent()
     }
     
     if agent_type.lower() not in agent_map:

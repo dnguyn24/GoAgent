@@ -17,6 +17,10 @@ Alphabeta: 6
 
 Overall, this demonstrates that alphabeta pruning allows the agent to search deeper in the game tree compared to minimax, which can lead to better decision making and improved performance.
 
+# Task 2b
+2. MCTS performed better than iterative deepening winning all 10 games. Iterative deepening did have more time remaining after the game ended compared to MCTS.
+
+
 
 
 
@@ -25,6 +29,11 @@ Overall, this demonstrates that alphabeta pruning allows the agent to search dee
 Sources: 
 https://huggingface.co/learn/deep-rl-course/unit3/deep-q-algorithm
 https://www.geeksforgeeks.org/deep-learning/implementing-deep-q-learning-using-tensorflow/
+
+
+
+Process:
+I started by copying the structure of the q learning notebook from assignment 9. I also included the get_features function from the supervised learning notebook. 
 
 
 Tell us about your implementation!

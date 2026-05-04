@@ -712,9 +712,33 @@ class MCTSAgent(GameAgent):
 #
 ###################################################
 
+class HybridAgent(GameAgent):
+    def __init__(self, ):
+        super().__init__()
+
+    model_path = "value_model.pt"
+    feature_size = 78
+    model = load_model(model_path, ValueNetwork(feature_size))
+    heuristic_search_problem = GoProblemLearnedHeuristic(model)
+
+    learned_agent = GreedyAgent(heuristic_search_problem)
+    alphabeta_simple = AlphaBetaAgent(depth_cutoff=2, search_problem=GoProblemSimpleHeuristic())
+
+    def get_move(self, game_state: GoState, time_limit: float) -> Action:
+        board = game_state.get_board()
+        num_pieces = np.sum(board[0]) + np.sum(board[1])
+        if num_pieces > 10:
+            return self.alphabeta_simple.get_move(game_state, time_limit)
+        else:
+            return self.learned_agent.get_move(game_state, time_limit)
+
+
+
+        
+
 def get_final_agent_5x5():
     """Called to construct agent for final submission for 5x5 board"""
-    return MCTSAgent()
+    return HybridAgent()
 
 def get_final_agent_9x9():
     """Called to construct agent for final submission for 9x9 board"""
