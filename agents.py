@@ -391,7 +391,7 @@ def create_value_agent_from_model():
     heuristic_search_problem = GoProblemLearnedHeuristic(model)
 
     # TODO: Try with other heuristic agents (IDS/AB/Minimax)
-    learned_agent = AlphaBetaAgent(heuristic_search_problem)
+    learned_agent = GreedyAgent(heuristic_search_problem)
 
     return learned_agent
 
@@ -615,6 +615,7 @@ class MCTSAgent(GameAgent):
         # TODO Part 2: Implement MCTS
         best_action = random.choice(self.search_problem.get_available_actions(game_state))
         node = MCTSNode(game_state)
+        self.root = node
         time_end = time.time() + time_limit - 1
 
         while time.time() < time_end:
@@ -721,20 +722,17 @@ class HybridAgent(GameAgent):
     model = load_model(model_path, ValueNetwork(feature_size))
     heuristic_search_problem = GoProblemLearnedHeuristic(model)
 
-    learned_agent = GreedyAgent(heuristic_search_problem)
-    alphabeta_simple = AlphaBetaAgent(depth_cutoff=2, search_problem=heuristic_search_problem)
-
-    learned_ids = IterativeDeepeningAgent(cutoff_time=1.5, search_problem=heuristic_search_problem)
-    MCTSAgent = MCTSAgent()
+    learned_IDS = IterativeDeepeningAgent(cutoff_time=1.5, search_problem=heuristic_search_problem)
+    mcts = MCTSAgent()
 
     def get_move(self, game_state: GoState, time_limit: float) -> Action:
         board = game_state.get_board()
         board_size = game_state.size
         num_pieces = np.sum(board[0]) + np.sum(board[1])
         if num_pieces > board_size * board_size // 2:
-            return self.MCTSAgent.get_move(game_state, time_limit)
+            return self.mcts.get_move(game_state, time_limit)
         else:
-            return self.learned_ids.get_move(game_state, time_limit)
+            return self.learned_IDS.get_move(game_state, time_limit)
 
 
 
